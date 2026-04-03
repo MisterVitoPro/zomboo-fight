@@ -1,5 +1,7 @@
 # ZOMBOO
 
+> This was an old college project that I now use as a testing ground for experimenting with tools and ideas.
+
 A top-down zombie shooter built with Pygame. Supports 1-2 players with controllers, or single-player with keyboard.
 
 ## Controls
