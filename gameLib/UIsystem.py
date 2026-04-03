@@ -55,7 +55,7 @@ class PLAYER1(pygame.sprite.Sprite):
         self.image = self.imageJumping
         self.x, self.y = self.image.get_size()
         
-        self.feet = self.y/2
+        self.feet = self.y//2
         self.rect = self.image.get_rect()
         self.rect.center = (256, (660 - self.feet))
         
@@ -123,14 +123,12 @@ class PLAYER1(pygame.sprite.Sprite):
 #                                if self.state != self.JUMPINGF:
                     self.dir = "right"
                     self.state = self.WALKINGF               
-                    print "going right"
                     
                 elif keys[pygame.K_a]:
                     self.rect.centerx -= self.movement
 #                                if self.state != self.JUMPING:
                     self.dir = "left"
                     self.state = self.WALKING
-                    print "going left"
                     
                 if keys[pygame.K_SPACE]:
                     if self.dir == "left": 

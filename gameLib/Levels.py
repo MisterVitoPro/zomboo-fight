@@ -18,21 +18,19 @@ class Level:
         self.Layout()
     def Layout (self):
         
-        x_offset = (BLOCK_SIZE/2)
-        y_offset = (BLOCK_SIZE/2)
-        
-        for y in xrange(self.image.get_height()):
+        x_offset = (BLOCK_SIZE//2)
+        y_offset = (BLOCK_SIZE//2)
+
+        for y in range(self.image.get_height()):
             self.y = y
-            for x in xrange(self.image.get_width()):
+            for x in range(self.image.get_width()):
                     self.x = x
                     """Get the center point for the rects"""
                     color = self.get_at(self.x, self.y)
                     pos = ((self.x*4 + x_offset), (self.y*4 + y_offset))
-                    print self.x, self.y, color
-                    if color == self.WALL: 
+                    if color == self.WALL:
                         wall = sprites.Wall(dataFiles.wallIm, pos)
                         sGroups.staticSprites.add(wall)
-                        print sGroups.staticSprites
     
     def get_at(self, dx, dy):
         try:

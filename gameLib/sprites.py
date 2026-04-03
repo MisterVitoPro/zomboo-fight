@@ -26,7 +26,7 @@ if jCount == 2:
 
 
     if j.get_init() == 1: 
-        print "Joystick is initialized"
+        pass
 
 class gameObject(pygame.sprite.Sprite):
     def __init__(self, image):
@@ -37,7 +37,7 @@ class gameObject(pygame.sprite.Sprite):
         self.transColor = self.image.get_at((0, 0))
         self.image.set_colorkey(self.transColor)
         self.rect = self.image.get_rect()
-        self.rect.center = ((800/2), (600/2))
+        self.rect.center = ((800//2), (600//2))
         self.damage = 0
         self.hp = 0
         self.dx = 0
@@ -293,11 +293,9 @@ class HitSplat (gameObject):
         gameObject.__init__ (self, image)
         self.rect.center = pos
         self.timer = 0
-        print "HitSplat Initiated"
-        
+
     def update (self):
         self.timer += 1
-        print self.timer
         if self.timer >= 5:
             self.kill()
             
@@ -323,9 +321,12 @@ class LaserSight (gameObject):
         self.dir = 0
         
     def update (self):
-        self.joyRX = float(self.j.get_axis(4))
-        self.joyRY = float(self.j.get_axis(3))
-        self.dir = (self.joyRX, self.joyRY)
+        if jOn == True and self.j != "none":
+            self.joyRX = float(self.j.get_axis(4))
+            self.joyRY = float(self.j.get_axis(3))
+            self.dir = (self.joyRX, self.joyRY)
+        else:
+            self.dir = self.player.dir
         self.oldxy = self.rect.center
         self.calcAngle(self.dir)
         self.image = pygame.transform.rotate(self.imageMaster, self.angle)
@@ -425,8 +426,6 @@ class Zombie(gameObject):
             DistRaw2 = ((Dist2[0] * Dist2[0]) + (Dist2[1] * Dist2[1]))
             DistMag2 = math.sqrt(DistRaw2)
             
-            print DistMag2
-            
             if self.rect.centery < player1.oldxy2[1]:
                 self.dy = 1
             elif self.rect.centery > player1.oldxy2[1]:
@@ -499,8 +498,6 @@ class Zombie(gameObject):
 #            elif self.moveDirY < 0 and self.moveDirX < 0 and self.moveDirY <= self.moveDirX:
 #                self.state = self.MOVE_NW
                 
-            print self.state
-            
             gameObject.animation(self)
 
             self.timer = 0
@@ -610,7 +607,7 @@ class UI(pygame.sprite.Sprite):
             else:
                 self.rect = self.image.get_rect()
                 self.timer -= 1
-                self.time = self.timer/30
+                self.time = self.timer//30
                 self.text = "Continue? %d" % self.time 
                 self.image = self.font.render(self.text, 10, (255, 255, 255))
                 self.rect = self.image.get_rect()
@@ -639,9 +636,10 @@ class Turret (gameObject):
         if self.timer >= 300:
             self.kill()
         
-        self.joyRX = float(j.get_axis(4))
-        self.joyRY = float(j.get_axis(3))    
-        self.dir = (self.joyRX, self.joyRY)
+        if jOn == True:
+            self.joyRX = float(j.get_axis(4))
+            self.joyRY = float(j.get_axis(3))
+            self.dir = (self.joyRX, self.joyRY)
         
         self.calcVector(self.dir)
         

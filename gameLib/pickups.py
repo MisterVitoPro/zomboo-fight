@@ -111,7 +111,6 @@ class grenadePickup (Pickup):
     def on_collide(self, player):
         self.kill()
         player.grenade += self.grenade
-        print player.grenade, "PLUS ONE IN GRENADE INVENTORY FOR", player
         
 class foodPickup(Pickup):
     def __init__(self, image):

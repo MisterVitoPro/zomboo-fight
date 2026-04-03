@@ -11,6 +11,7 @@ class Player (sprites.gameObject):
     def __init__(self, image, pNum):
         sprites.gameObject.__init__(self, image)
         self.pNum = pNum
+        self.j = None
         if sprites.jOn == True:
             if pNum == 1:
                 self.j = sprites.j
@@ -29,7 +30,7 @@ class Player (sprites.gameObject):
         self.dy = 5
         self.speedX = 0
         self.speedY = 0
-        self.sprintSpeed = 0
+        self.sprintSpeed = 1
         self.dir = (0, 0)
         self.facing = "none"
         self.fireTimer = 0
@@ -169,10 +170,10 @@ class Player (sprites.gameObject):
                                     if self.clips > 0:
                                         self.preReload()      
             
-#Stamina effects    
+#Stamina effects
         self.staminaChange(1)
-#Sprinting
-        if sprites.jOn == True:        
+#Sprinting (controller only - keyboard sprint handled below)
+        if sprites.jOn == True:
             if self.trigR > 0:
                 if self.stamina > 0:
                     self.sprintSpeed = abs(self.trigR * 2)
@@ -204,20 +205,74 @@ class Player (sprites.gameObject):
        
         """ FIRING GUN AND RELOADING USING KEYBOARD """
         self.keys = pygame.key.get_pressed()
-        if self.keys:
-            self.movement()
+        if sprites.jOn == False:
+            if self.keys:
+                self.movement()
+
+            # Update facing direction based on movement keys
+            if self.keys[pygame.K_d] and not self.keys[pygame.K_a]:
+                self.state = self.MOVE_E
+                self.dir = (1, 0)
+            elif self.keys[pygame.K_a] and not self.keys[pygame.K_d]:
+                self.state = self.MOVE_W
+                self.dir = (-1, 0)
+            elif self.keys[pygame.K_s] and not self.keys[pygame.K_w]:
+                self.state = self.MOVE_S
+                self.dir = (0, 1)
+            elif self.keys[pygame.K_w] and not self.keys[pygame.K_s]:
+                self.state = self.MOVE_N
+                self.dir = (0, -1)
+
+            # Aiming with arrow keys overrides movement direction for firing
+            if self.keys[pygame.K_RIGHT]:
+                self.dir = (1, 0)
+                self.state = self.MOVE_E
+            elif self.keys[pygame.K_LEFT]:
+                self.dir = (-1, 0)
+                self.state = self.MOVE_W
+            elif self.keys[pygame.K_DOWN]:
+                self.dir = (0, 1)
+                self.state = self.MOVE_S
+            elif self.keys[pygame.K_UP]:
+                self.dir = (0, -1)
+                self.state = self.MOVE_N
+
+            # Sprint with left shift
+            if self.keys[pygame.K_LSHIFT]:
+                if self.stamina > 0:
+                    self.sprintSpeed = 2
+                    self.animDelay = 2
+                    self.staminaChange(0)
+            else:
+                self.sprintSpeed = 1
+                self.animDelay = 5
+
+            self.moving = True
+            sprites.gameObject.animation(self)
+
         if self.keys[pygame.K_SPACE] == True:
             if self.fireTimer >= self.fireRate:
-                if self.ammo > 0:
-                    self.fire(self.dir)
-                    self.fireTimer = 0
-        elif self.keys[pygame.K_t] == True:
-            if self.gun == "Pistol":
-                if self.ammo < 9:
-                    if self.clips > 0:
+                if self.reloading == False:
+                    if self.ammo > 0:
+                        self.fire(self.dir)
+                        self.fireTimer = 0
+                    elif self.ammo <= 0:
+                        self.fireSnd.stop()
+                        self.emptySnd.play()
                         self.preReload()
+
+        if self.keys[pygame.K_t] == True:
+            if self.reloading == False:
+                if self.gun == "Pistol":
+                    if self.ammo < 9:
+                        if self.clips > 0:
+                            self.preReload()
                 elif self.gun == "Shotgun":
                     if self.ammo < 5:
+                        if self.clips > 0:
+                            self.preReload()
+                elif self.gun == "MP5":
+                    if self.ammo < 32:
                         if self.clips > 0:
                             self.preReload()
                 elif self.gun == "Flamethrower":
@@ -228,11 +283,17 @@ class Player (sprites.gameObject):
                     if self.ammo < 1:
                         if self.clips > 0:
                             self.preReload()
+
+        # Throw grenade with G key
+        if self.keys[pygame.K_g] == True:
+            if self.grenade > 0:
+                if self.gTimer >= self.gTime:
+                    self.throwGrenade(self.dir)
+                    self.gTimer = 0
         
         """ REALODING TIMER """                   
         if self.reloading == True:
             self.reloadTime += 1
-            print self.reloadTime
             if self.reloadTime >= self.reloadSpeed:
                 self.reload(self.gun)
                 
@@ -266,7 +327,6 @@ class Player (sprites.gameObject):
             
         collideZom = pygame.sprite.spritecollide(self, zombieSprites, False)
         for collider in collideZom:
-            print "COLLIDED"
             if self.godMode == False:
                 self.on_collide(collider)
                 
@@ -276,9 +336,13 @@ class Player (sprites.gameObject):
             
         collidePowerup = pygame.sprite.spritecollide(self, powerupSprites, False)
         for collider in collidePowerup:
-            if pygame.JOYBUTTONDOWN:
-                if self.j.get_button(0):
+            if sprites.jOn == True and self.j is not None:
+                if pygame.JOYBUTTONDOWN:
+                    if self.j.get_button(0):
                         collider.on_collide(self)
+            else:
+                if self.keys[pygame.K_e] == True:
+                    collider.on_collide(self)
             
             
     def movement (self):
@@ -397,14 +461,10 @@ class Player (sprites.gameObject):
             radians = math.atan2 (diry, dirx)
             angle = radians * 180 / math.pi
             angle += 180
-            print angle, "ANGLE ORIGINAL"
-            print dirx, diry, "ORIGINAL VECTOR"
-            
+
             radians = math.atan2 (dir1y, dirx)
             angle2 = radians * 180 / math.pi
             angle2 += 180
-            print angle2, "ANGLE 2"
-            print dir1x, dir1y, "ORIGINAL VECTOR"
             
             
 
@@ -477,7 +537,6 @@ class Player (sprites.gameObject):
             
     def throwGrenade(self, dir):
             self.grenade -= 1
-            print "GRENADES LEFT", self.grenade
             grenade = sprites.Grenade(dataFiles.grenadeIm, self.rect.center, dir, self.speedX, self.speedY)
             self.bombSprites.add(grenade)
             return self.bombSprites
