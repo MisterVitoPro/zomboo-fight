@@ -29,7 +29,7 @@ class game:
         keepGoing = True
         gameOverTimer = 0
         nextSpawnThreshold = random.randrange(10 * dataFiles.FPS, 15 * dataFiles.FPS)
-        pygame.mouse.set_visible(False)
+        pygame.mouse.set_visible(True)
         while keepGoing:
             ms = clock.tick(dataFiles.FPS)
             dt = ms / (1000.0 / dataFiles.FPS)

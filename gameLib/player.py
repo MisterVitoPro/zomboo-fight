@@ -210,33 +210,25 @@ class Player (sprites.GameObject):
             if self.keys:
                 self.movement()
 
-            # Update facing direction based on movement keys
-            if self.keys[pygame.K_d] and not self.keys[pygame.K_a]:
-                self.state = self.MOVE_E
-                self.dir = (1, 0)
-            elif self.keys[pygame.K_a] and not self.keys[pygame.K_d]:
-                self.state = self.MOVE_W
-                self.dir = (-1, 0)
-            elif self.keys[pygame.K_s] and not self.keys[pygame.K_w]:
-                self.state = self.MOVE_S
-                self.dir = (0, 1)
-            elif self.keys[pygame.K_w] and not self.keys[pygame.K_s]:
-                self.state = self.MOVE_N
-                self.dir = (0, -1)
+            # Aim toward the mouse cursor
+            mx, my = pygame.mouse.get_pos()
+            aim_dx = mx - self.rect.centerx
+            aim_dy = my - self.rect.centery
+            aim_dist = math.sqrt(aim_dx * aim_dx + aim_dy * aim_dy)
+            if aim_dist > 0:
+                self.dir = (aim_dx / aim_dist, aim_dy / aim_dist)
 
-            # Aiming with arrow keys overrides movement direction for firing
-            if self.keys[pygame.K_RIGHT]:
-                self.dir = (1, 0)
-                self.state = self.MOVE_E
-            elif self.keys[pygame.K_LEFT]:
-                self.dir = (-1, 0)
-                self.state = self.MOVE_W
-            elif self.keys[pygame.K_DOWN]:
-                self.dir = (0, 1)
-                self.state = self.MOVE_S
-            elif self.keys[pygame.K_UP]:
-                self.dir = (0, -1)
-                self.state = self.MOVE_N
+            # Pick animation facing from mouse angle
+            if abs(aim_dx) > abs(aim_dy):
+                if aim_dx > 0:
+                    self.state = self.MOVE_E
+                else:
+                    self.state = self.MOVE_W
+            else:
+                if aim_dy > 0:
+                    self.state = self.MOVE_S
+                else:
+                    self.state = self.MOVE_N
 
             # Sprint with left shift
             if self.keys[pygame.K_LSHIFT]:
@@ -251,7 +243,9 @@ class Player (sprites.GameObject):
             self.moving = True
             sprites.GameObject.animation(self)
 
-        if self.keys[pygame.K_SPACE] == True:
+        mouseButtons = pygame.mouse.get_pressed()
+        firePressed = self.keys[pygame.K_SPACE] or mouseButtons[0]
+        if firePressed:
             if self.fireTimer >= self.fireRate:
                 if self.reloading == False:
                     if self.ammo > 0:

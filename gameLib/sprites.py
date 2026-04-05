@@ -298,7 +298,14 @@ class LaserSight (GameObject):
             self.joyRY = float(self.j.get_axis(3))
             self.dir = (self.joyRX, self.joyRY)
         else:
-            self.dir = self.player.dir
+            mx, my = pygame.mouse.get_pos()
+            aim_dx = mx - self.player.rect.centerx
+            aim_dy = my - self.player.rect.centery
+            dist = math.sqrt(aim_dx * aim_dx + aim_dy * aim_dy)
+            if dist > 0:
+                self.dir = (aim_dx / dist, aim_dy / dist)
+            else:
+                self.dir = self.player.dir
         self.calc_angle(self.dir)
         int_angle = int(self.angle) % 360
         if int_angle != self._prev_angle:
@@ -346,136 +353,93 @@ class Zombie(GameObject):
         self.rect.center = pos
         self.hp = 60
         self.damage = 25
-        self.dx = 0
-        self.dy = 0
+        self.dx = 0.0
+        self.dy = 0.0
         self.dxPlayer = 0
         self.dyPlayer = 0
-        self.speedX = 2
-        self.speedY = 2
+        base_speed = 2 + random.uniform(-0.4, 0.4)
+        self.speedX = base_speed
+        self.speedY = base_speed
         self.delay = 0
         self.timer = 0
         self.pause = 0
         self.dir = "none"
         self.animDelay = 10
+        self.wander_offset = random.uniform(0, math.pi * 2)
+        self.wander_speed = random.uniform(1.5, 3.0)
+        self.wander_strength = random.uniform(0.3, 0.6)
+        self.steer_speed = 0.08
     
+    def _get_target_pos(self, player1, player2):
+        """Return the position of the nearest player to track."""
+        if player2 is not None and jCount == 2:
+            dist1_sq = (self.rect.centerx - player2.rect.centerx) ** 2 + (self.rect.centery - player2.rect.centery) ** 2
+            dist2_sq = (self.rect.centerx - player1.rect.centerx) ** 2 + (self.rect.centery - player1.rect.centery) ** 2
+            if dist2_sq <= dist1_sq:
+                return player1.oldxy2
+            else:
+                return player2.oldxy2
+        return player1.oldxy2
+
     def update(self, bulletSprites, fireSprites, player1, player2, dt=1.0):
         self.moving = True
-        
         self.oldxy = self.rect.center
         self.timer += 1
-        
-        if player2 is not None and jCount == 2:
-# Distance from the player2        
-            Dist1 = ((self.rect.centerx - player2.rect.centerx), (self.rect.centery - player2.rect.centery))
-            DistRaw1 = ((Dist1[0] * Dist1[0]) + (Dist1[1] * Dist1[1]))
-            DistMag1 = math.sqrt(DistRaw1)
-            
-            Dist2 = ((self.rect.centerx - player1.rect.centerx), (self.rect.centery - player1.rect.centery))
-            DistRaw2 = ((Dist2[0] * Dist2[0]) + (Dist2[1] * Dist2[1]))
-            DistMag2 = math.sqrt(DistRaw2)
-            
-            if DistMag1 > DistMag2:
-                if self.rect.centerx < player1.oldxy2[0]:
-                    self.dx = 1
-                elif self.rect.centerx > player1.oldxy2[0]:
-                    self.dx = -1
-            elif DistMag1 < DistMag2:
-                if self.rect.centerx < player2.oldxy2[0]:
-                    self.dx = 1
-                elif self.rect.centerx > player2.oldxy2[0]:
-                    self.dx = -1
-            if DistMag1 > DistMag2:
-                if self.rect.centery < player1.oldxy2[1]:
-                    self.dy = 1
-                elif self.rect.centery > player1.oldxy2[1]:
-                    self.dy = -1
-            elif DistMag1 < DistMag2:
-                if self.rect.centery < player2.oldxy2[1]:
-                    self.dy = 1
-                elif self.rect.centery > player2.oldxy2[1]:
-                    self.dy = -1
+
+        target = self._get_target_pos(player1, player2)
+        diff_x = target[0] - self.rect.centerx
+        diff_y = target[1] - self.rect.centery
+        dist = math.sqrt(diff_x * diff_x + diff_y * diff_y)
+
+        if dist > 1.0:
+            goal_dx = diff_x / dist
+            goal_dy = diff_y / dist
         else:
-# Distance from the player1   
-            self.dxplayer = self.rect.centerx - player1.rect.centerx
-            self.dyplayer = self.rect.centery - player1.rect.centery
-            
-            Dist2 = (self.dxplayer, self.dyplayer)
-            DistRaw2 = ((Dist2[0] * Dist2[0]) + (Dist2[1] * Dist2[1]))
-            DistMag2 = math.sqrt(DistRaw2)
-            
-            if self.rect.centery < player1.oldxy2[1]:
-                self.dy = 1
-            elif self.rect.centery > player1.oldxy2[1]:
-                self.dy = -1
-            if self.rect.centerx < player1.oldxy2[0]:
-                self.dx = 1
-            elif self.rect.centerx > player1.oldxy2[0]:
-                self.dx = -1
-            
-#            self.dx = (self.dxplayer/DistMag2)
-#            self.dy = (self.dyplayer/DistMag2)
-#            dxNeg = self.dx * -1
-#            dyNeg = self.dy * -1
-            
-#            if self.rect.centerx < player1.oldxy2[0]:
-#                self.dx = self.dx
-#            elif self.rect.centerx > player1.oldxy2[0]:
-#                self.dx = dxNeg
-#            if self.rect.centery < player1.oldxy2[1]:
-#                self.dy = dyNeg
-#            elif self.rect.centery > player1.oldxy2[1]:
-#                self.dy = self.dy
-            if self.rect.centerx == player1.oldxy2[0] and self.rect.centery != player1.oldxy2[1]:
-                self.dx = 0
-            elif self.rect.centery == player1.oldxy2[1] and self.rect.centerx != player1.oldxy2[0]:
-                self.dy = 0 
-            
+            goal_dx = 0.0
+            goal_dy = 0.0
+
+        self.wander_offset += self.wander_speed * 0.02
+        wander_x = math.cos(self.wander_offset) * self.wander_strength
+        wander_y = math.sin(self.wander_offset) * self.wander_strength
+
+        goal_dx += wander_x
+        goal_dy += wander_y
+
+        self.dx += (goal_dx - self.dx) * self.steer_speed
+        self.dy += (goal_dy - self.dy) * self.steer_speed
+
         if self.rect.top < 0:
-            self.dy = 0
+            self.dy = max(self.dy, 0)
             self.rect.centery = self.oldy
         if self.rect.right > dataFiles.SCREEN_WIDTH:
-            self.dx = 0
+            self.dx = min(self.dx, 0)
             self.rect.centerx = self.oldx
         if self.rect.bottom > dataFiles.SCREEN_HEIGHT:
-            self.dy = 0
+            self.dy = min(self.dy, 0)
             self.rect.centery = self.oldy
         if self.rect.left < 0:
-            self.dx = 0
+            self.dx = max(self.dx, 0)
             self.rect.centerx = self.oldx
-        
+
         if self.timer >= self.delay:
-            self.pause += 1
-            self.moveDirX = (self.dx * self.speedX)
-            self.moveDirY = (self.dy * self.speedY)
+            self.moveDirX = self.dx * self.speedX
+            self.moveDirY = self.dy * self.speedY
 
             self.rect.centerx += self.moveDirX * dt
             self.rect.centery += self.moveDirY * dt
-            
-            delay2 = random.randrange(5, 15)
-            if self.pause >= delay2:
-                self.dx = random.randrange(-1, 2)
-                self.dy = random.randrange(-1, 2)
-            
-            if self.moveDirX > 0 and self.moveDirX > self.moveDirY:
-                self.state = self.MOVE_E
-            elif self.moveDirX < 0 and self.moveDirX < self.moveDirY:
-                self.state = self.MOVE_W
-            elif self.moveDirY > 0 and self.moveDirY > self.moveDirX:
-                self.state = self.MOVE_S
-            elif self.moveDirY < 0 and self.moveDirY < self.moveDirX:
-                self.state = self.MOVE_N
-#            
-#            elif self.moveDirX > 0 and self.moveDirY > 0 and self.moveDirX >= self.moveDirY:
-#                self.state = self.MOVE_SE
-#            elif self.moveDirX < 0 and self.moveDirY > 0 and self.moveDirX <= self.moveDirY:
-#                self.state = self.MOVE_SW
-#            elif self.moveDirY < 0 and self.moveDirX > 0 and self.moveDirY >= self.moveDirX:
-#                self.state = self.MOVE_NE
-#            elif self.moveDirY < 0 and self.moveDirX < 0 and self.moveDirY <= self.moveDirX:
-#                self.state = self.MOVE_NW
-                
-            GameObject.animation(self)
 
+            if abs(self.moveDirX) > abs(self.moveDirY):
+                if self.moveDirX > 0:
+                    self.state = self.MOVE_E
+                else:
+                    self.state = self.MOVE_W
+            else:
+                if self.moveDirY > 0:
+                    self.state = self.MOVE_S
+                elif self.moveDirY < 0:
+                    self.state = self.MOVE_N
+
+            GameObject.animation(self)
             self.timer = 0
                 
         collideBul = pygame.sprite.spritecollide(self, bulletSprites, False)
