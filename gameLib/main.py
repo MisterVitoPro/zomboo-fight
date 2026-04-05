@@ -2,7 +2,7 @@
 
 Created 2011 by Anthony D'Alessandro.
 """
-import pygame, random
+import pygame, random, json, os
 import dataFiles, sprites, pickups, player, zombieSpawn, UI_HUD, sGroups
 pygame.init()
 
@@ -16,6 +16,7 @@ class game:
         self.spawnRate = random.randrange(10, 31)
         
         sGroups.empty_all()
+        sGroups.kill_count = 0
         self.make_sprites()
         sGroups.staticSprites.draw(self.screen)
         self.main_loop()
@@ -30,8 +31,18 @@ class game:
         zombieSMax = 90
         clock = pygame.time.Clock()
         keepGoing = True
+        paused = False
         gameOverTimer = 0
         nextSpawnThreshold = random.randrange(10 * dataFiles.FPS, 15 * dataFiles.FPS)
+        self.shakeTimer = 0
+        self.shakeIntensity = 0
+        waveFont = pygame.font.SysFont("None", 48)
+        waveLabelFont = pygame.font.SysFont("None", 28)
+        waveAnnounceTimer = 0
+        pauseFont = pygame.font.SysFont("None", 48)
+        pauseSmallFont = pygame.font.SysFont("None", 28)
+        hitFlashSurface = pygame.Surface((dataFiles.SCREEN_WIDTH, dataFiles.SCREEN_HEIGHT))
+        hitFlashSurface.fill((255, 0, 0))
         pygame.mouse.set_visible(True)
         while keepGoing:
             ms = clock.tick(dataFiles.FPS)
@@ -41,7 +52,27 @@ class game:
                     keepGoing = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
-                        keepGoing = False
+                        if paused:
+                            keepGoing = False
+                        elif not self.player1.dead:
+                            paused = True
+                    if event.key == pygame.K_RETURN and paused:
+                        paused = False
+
+            if paused:
+                self.draw_groups()
+                overlay = pygame.Surface((dataFiles.SCREEN_WIDTH, dataFiles.SCREEN_HEIGHT))
+                overlay.fill((0, 0, 0))
+                overlay.set_alpha(150)
+                self.screen.blit(overlay, (0, 0))
+                pauseText = pauseFont.render("PAUSED", True, (255, 255, 255))
+                resumeText = pauseSmallFont.render("ENTER - Resume", True, (200, 200, 200))
+                quitText = pauseSmallFont.render("ESC - Quit", True, (200, 200, 200))
+                self.screen.blit(pauseText, (dataFiles.SCREEN_WIDTH // 2 - pauseText.get_width() // 2, 220))
+                self.screen.blit(resumeText, (dataFiles.SCREEN_WIDTH // 2 - resumeText.get_width() // 2, 290))
+                self.screen.blit(quitText, (dataFiles.SCREEN_WIDTH // 2 - quitText.get_width() // 2, 320))
+                pygame.display.flip()
+                continue
 
             if self.player1.dead:
                 gameOverTimer += 1
@@ -65,6 +96,7 @@ class game:
                 sGroups.UISprites.add(self.zombie_spawner)
                 timerSpawn = 0
                 zombieLvl += 1
+                waveAnnounceTimer = 2 * dataFiles.FPS
                 zombieSMin = max(zombieSMin - 6, 5)
                 zombieSMax = max(zombieSMax - 6, 10)
                 nextSpawnThreshold = random.randrange(10 * dataFiles.FPS, 15 * dataFiles.FPS)
@@ -72,8 +104,36 @@ class game:
             self.update_groups(dt)
             self.draw_groups()
 
+            # screen shake
+            if sGroups.shake_intensity > 0:
+                self.shakeTimer = 8
+                self.shakeIntensity = sGroups.shake_intensity
+                sGroups.shake_intensity = 0
+            if self.shakeTimer > 0:
+                self.shakeTimer -= 1
+                intensity = self.shakeIntensity * (self.shakeTimer / 8.0)
+                ox = random.randint(int(-intensity), int(intensity))
+                oy = random.randint(int(-intensity), int(intensity))
+                self.screen.scroll(ox, oy)
+
+            # player hit flash
+            if self.player1.hitFlashTimer > 0:
+                hitFlashSurface.set_alpha(80)
+                self.screen.blit(hitFlashSurface, (0, 0))
+
+            # wave display
+            waveLabel = waveLabelFont.render("WAVE %d" % (zombieLvl + 1), True, (255, 255, 255))
+            self.screen.blit(waveLabel, (dataFiles.SCREEN_WIDTH // 2 - waveLabel.get_width() // 2, 5))
+
+            if waveAnnounceTimer > 0:
+                waveAnnounceTimer -= 1
+                announceText = waveFont.render("WAVE %d" % (zombieLvl + 1), True, (255, 255, 0))
+                self.screen.blit(announceText, (dataFiles.SCREEN_WIDTH // 2 - announceText.get_width() // 2, dataFiles.SCREEN_HEIGHT // 2 - 40))
+
             pygame.display.flip()
 
+        if sGroups.kill_count > 0:
+            save_high_score(zombieLvl + 1, sGroups.kill_count)
         pygame.mouse.set_visible(True)
 
     def spawn_zombie(self, pos):
@@ -95,11 +155,11 @@ class game:
         mp5Spawn = random.randrange (1, 101)
         clipSpawn = random.randrange(1, 101)
         grenadeSpawn = random.randrange(1, 101)
-#        turretSpawn = random.randrange(1, 101)
-#        
-#        if turretSpawn <= 5:
-#            turret = pickups.TurretPickup(dataFiles.turretIm)
-#            sGroups.powerupSprites.add(turret)
+        turretSpawn = random.randrange(1, 101)
+
+        if turretSpawn <= 5:
+            turret = pickups.TurretPickup(dataFiles.turretIm)
+            sGroups.powerupSprites.add(turret)
         
         if medkitSpawn >= 90:
             food = pickups.FoodPickup(dataFiles.foodIm)
@@ -196,13 +256,43 @@ class game:
         sGroups.textSprites.draw(self.screen)
         
         
+def load_high_scores():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "highscores.json")
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+def save_high_score(wave, kills):
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "highscores.json")
+    scores = load_high_scores()
+    scores.append({"wave": wave, "kills": kills})
+    scores.sort(key=lambda s: s["kills"], reverse=True)
+    scores = scores[:10]
+    with open(path, "w") as f:
+        json.dump(scores, f)
+
 def menu():
     screen = pygame.display.set_mode((dataFiles.SCREEN_WIDTH, dataFiles.SCREEN_HEIGHT))
     pygame.display.set_caption("ZOMBOO")
-    
+
     background = pygame.image.load(dataFiles.mainMenuIm)
     screen.blit(background, (0, 0))
-    
+
+    titleFont = pygame.font.SysFont("None", 28)
+    controlFont = pygame.font.SysFont("None", 22)
+    scoreFont = pygame.font.SysFont("None", 22)
+
+    controls = [
+        "WASD - Move",
+        "Mouse / SPACE - Fire",
+        "T - Reload",
+        "G - Grenade",
+        "SHIFT - Sprint",
+        "ESC - Pause",
+    ]
+
     keepGoing = 1
     donePlaying = True
     clock = pygame.time.Clock()
@@ -221,7 +311,26 @@ def menu():
                 if event.key == pygame.K_SPACE:
                     keepGoing = 0
                     donePlaying = False
-        
+
+        # controls panel
+        startText = titleFont.render("PRESS SPACE TO PLAY", True, (255, 255, 0))
+        screen.blit(startText, (dataFiles.SCREEN_WIDTH // 2 - startText.get_width() // 2, 420))
+
+        cy = 470
+        for line in controls:
+            surf = controlFont.render(line, True, (200, 200, 200))
+            screen.blit(surf, (30, cy))
+            cy += 20
+
+        # high scores
+        scores = load_high_scores()
+        if scores:
+            hsTitle = titleFont.render("HIGH SCORES", True, (255, 255, 0))
+            screen.blit(hsTitle, (dataFiles.SCREEN_WIDTH - 230, 470))
+            for i, s in enumerate(scores[:5]):
+                entry = scoreFont.render("%d. Wave %d - %d kills" % (i + 1, s["wave"], s["kills"]), True, (200, 200, 200))
+                screen.blit(entry, (dataFiles.SCREEN_WIDTH - 230, 495 + i * 20))
+
         pygame.display.flip()
     return donePlaying
 def main():

@@ -39,6 +39,7 @@ class Player (sprites.GameObject):
         self.reloadSnd = dataFiles.load_sound(dataFiles.reloadSnd)
         self.godMode = False
         self.timerGodmode = 0
+        self.hitFlashTimer = 0
         self.timerHP = 0
         self.timerPos = 0
         self.gTimer = 0
@@ -308,6 +309,9 @@ class Player (sprites.GameObject):
                 if self.timerGodmode >= 15:
                     self.godMode = False
                     self.timerGodmode = 0
+
+        if self.hitFlashTimer > 0:
+            self.hitFlashTimer -= 1
                     
         if self.hp > 100:
             self.timerHP += 1
@@ -374,6 +378,8 @@ class Player (sprites.GameObject):
         self.hp -= collider.damage
         if self.hp < hp:
             self.godMode = True
+            self.hitFlashTimer = 3
+            sGroups.shake_intensity = 3
         if self.hp <= 0:
             self.hp = 0
             self.die()

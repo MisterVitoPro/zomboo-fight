@@ -107,4 +107,5 @@ shotgunFireSnd = (soundPath + "shotgun_fire.ogg")
 shotgunReloadingSnd = (soundPath + "shotgun_reloading.ogg")
 
 zombieDamSnd = (soundPath + "ZombieDamage.ogg")
+explosionSnd = (soundPath + "explosion.wav")
 

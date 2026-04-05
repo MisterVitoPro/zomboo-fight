@@ -330,6 +330,8 @@ class LaserSight (GameObject):
 
 class Explosion (GameObject):
     """Short-lived area-of-effect blast sprite that deals damage to overlapping entities once."""
+    _snd = None
+
     def __init__ (self, damage, pos):
         image = (dataFiles.explosionIm)
         GameObject.__init__(self, image)
@@ -337,6 +339,10 @@ class Explosion (GameObject):
         self.damage = damage
         self.rect.center = pos
         self.damaged = set()
+        if Explosion._snd is None:
+            Explosion._snd = dataFiles.load_sound(dataFiles.explosionSnd)
+        Explosion._snd.play()
+        sGroups.shake_intensity = 5
         
     def update (self):
         self.explodeTimer += 1
@@ -351,6 +357,8 @@ class Explosion (GameObject):
             
 class Zombie(GameObject):
     """Enemy that pursues the nearest player and takes damage from bullets and explosions."""
+    _deathSnd = None
+
     def __init__(self, image, pos):
         GameObject.__init__(self, image)
         self.image = self.NORTH[0]
@@ -374,6 +382,9 @@ class Zombie(GameObject):
         self.wander_speed = random.uniform(1.5, 3.0)
         self.wander_strength = random.uniform(0.3, 0.6)
         self.steer_speed = 0.08
+        if Zombie._deathSnd is None:
+            Zombie._deathSnd = dataFiles.load_sound(dataFiles.zombieDamSnd)
+        self.deathSnd = Zombie._deathSnd
     
     def _get_target_pos(self, player1, player2):
         """Return the position of the nearest living player to track."""
@@ -488,6 +499,8 @@ class Zombie(GameObject):
         """Subtract collider damage from HP and kill the zombie if HP reaches zero."""
         self.hp -= collider.damage
         if self.hp <= 0:
+            self.deathSnd.play()
+            sGroups.kill_count += 1
             self.kill()
                               
 class BigZombie (Zombie):

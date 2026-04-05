@@ -47,3 +47,9 @@ powerupSprites = _instance.powerupSprites
 staticSprites = _instance.staticSprites
 
 empty_all = _instance.empty_all
+
+# Screen shake request: set intensity > 0 to trigger shake in main loop
+shake_intensity = 0
+
+# Kill counter for scoring
+kill_count = 0
