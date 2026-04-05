@@ -36,5 +36,5 @@ class Level:
     def get_at(self, dx, dy):
         try:
             return self.image.get_at((dx, dy))
-        except (IndexError, TypeError):
-            pass
+        except (IndexError, TypeError) as e:
+            print(f"Warning: could not read pixel at ({dx}, {dy}): {e}")

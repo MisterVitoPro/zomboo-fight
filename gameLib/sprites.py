@@ -12,7 +12,12 @@ _frame_cache = {}
 
 
 def _cached_image_load(path):
-    """Load and convert an image, returning a cached copy on subsequent calls."""
+    """Load and convert an image, returning a cached copy on subsequent calls.
+
+    .copy() is intentional: pygame surfaces are mutable, and callers frequently
+    call set_colorkey() or blit onto the surface they receive. Returning a copy
+    prevents those mutations from corrupting the shared cached master surface.
+    """
     if path not in _image_cache:
         img = pygame.image.load(path).convert()
         _image_cache[path] = img
@@ -63,6 +68,10 @@ try:
 except pygame.error:
     pass
 
+# NOTE: Joystick state (jCount, jOn, j, j2) is initialized once when this module is
+# first imported. If joysticks are connected or disconnected after import, or if the
+# game is restarted within the same process, these globals will not reflect the new
+# hardware state. A full process restart is required to pick up joystick changes.
 jCount = pygame.joystick.get_count()
 jOn = False
 j = None
@@ -151,50 +160,46 @@ class GameObject(pygame.sprite.Sprite):
     
     def animation (self):
         """Advance the directional walk-cycle frame based on current movement state."""
+        # P2-006: guard against uninitialized state
+        if self.state is None:
+            return
         if self.moving == True:
             if self.state == self.MOVE_N:
                 self.pause += 1
                 if self.pause > self.animDelay:
                     self.pause = 0
                     self.frame += 1
+                # P2-001: display the last frame before wrapping back to 0
+                self.image = self.NORTH[self.frame] if self.frame < len(self.NORTH) else self.NORTH[-1]
                 if self.frame >= len(self.NORTH):
                     self.frame = 0
-                    self.state = self.MOVE_N
-                else:
-                    self.image = self.NORTH[self.frame]
-                    
+
             elif self.state == self.MOVE_E:
                 self.pause += 1
                 if self.pause > self.animDelay:
                     self.pause = 0
                     self.frame += 1
+                self.image = self.EAST[self.frame] if self.frame < len(self.EAST) else self.EAST[-1]
                 if self.frame >= len(self.EAST):
                     self.frame = 0
-                    self.state = self.MOVE_E
-                else:
-                    self.image = self.EAST[self.frame]
-                    
+
             elif self.state == self.MOVE_W:
                 self.pause += 1
                 if self.pause > self.animDelay:
                     self.pause = 0
                     self.frame += 1
+                self.image = self.WEST[self.frame] if self.frame < len(self.WEST) else self.WEST[-1]
                 if self.frame >= len(self.WEST):
                     self.frame = 0
-                    self.state = self.MOVE_W
-                else:
-                    self.image = self.WEST[self.frame]        
-                    
+
             elif self.state == self.MOVE_S:
                 self.pause += 1
                 if self.pause > self.animDelay:
                     self.pause = 0
                     self.frame += 1
+                self.image = self.SOUTH[self.frame] if self.frame < len(self.SOUTH) else self.SOUTH[-1]
                 if self.frame >= len(self.SOUTH):
                     self.frame = 0
-                    self.state = self.MOVE_S
-                else:
-                    self.image = self.SOUTH[self.frame]
         
 class Bullet (GameObject):
     """Projectile fired by a weapon that travels in a fixed direction and expires after a set lifetime."""
@@ -230,18 +235,18 @@ class Bullet (GameObject):
         """Spawn a hit splat and reduce bullet penetration strength on impact."""
         hit = HitSplat(dataFiles.hitIm, self.rect.center)
         self.splatSprites.add(hit)
-        self.bulletStr -= 1
+        self.bulletStr -= collider.bulletResist
         if self.bulletStr <= 0:
             self.die()
-        
-        self.bulletStr -= collider.bulletResist
-       
+
         return self.splatSprites
     def die (self):
         self.kill()
         if self.gun == "Bazooka":
             explosion = Explosion(self.damage, self.rect.center)
             self.fireSprites.add(explosion)
+        # P2-010: release fireSprites reference to avoid retaining group after death
+        self.fireSprites = None
         
         
         
@@ -284,7 +289,7 @@ class LaserSight (GameObject):
         self._build_rotation_cache()
 
     def _build_rotation_cache(self):
-        cache_key = id(self.imageMaster)
+        cache_key = dataFiles.laserSightIm
         if cache_key not in LaserSight._rotation_cache:
             frames = {}
             for angle in range(360):
@@ -371,8 +376,8 @@ class Zombie(GameObject):
         self.steer_speed = 0.08
     
     def _get_target_pos(self, player1, player2):
-        """Return the position of the nearest player to track."""
-        if player2 is not None and jCount == 2:
+        """Return the position of the nearest living player to track."""
+        if player2 is not None and not player2.dead and jCount == 2:
             dist1_sq = (self.rect.centerx - player2.rect.centerx) ** 2 + (self.rect.centery - player2.rect.centery) ** 2
             dist2_sq = (self.rect.centerx - player1.rect.centerx) ** 2 + (self.rect.centery - player1.rect.centery) ** 2
             if dist2_sq <= dist1_sq:
@@ -399,6 +404,8 @@ class Zombie(GameObject):
             goal_dy = 0.0
 
         self.wander_offset += self.wander_speed * 0.02
+        # P2-002: wrap wander_offset to [0, 2*pi) to prevent unbounded accumulation
+        self.wander_offset = self.wander_offset % (math.pi * 2)
         wander_x = math.cos(self.wander_offset) * self.wander_strength
         wander_y = math.sin(self.wander_offset) * self.wander_strength
 
@@ -449,8 +456,10 @@ class Zombie(GameObject):
         
         collideEx = pygame.sprite.spritecollide(self, fireSprites, False)
         for collider in collideEx:
-            if id(self) not in collider.damaged:
-                collider.damaged.add(id(self))
+            # P2-011: use sprite object directly instead of id() so the set tracks
+            # live references rather than potentially reused memory addresses
+            if self not in collider.damaged:
+                collider.damaged.add(self)
                 self.on_collide(collider)
 
         collideZom = pygame.sprite.spritecollide(self, sGroups.zombieSprites, False)
@@ -507,8 +516,9 @@ class Grenade(GameObject):
         self.speed = float(self.speed)
         self.timer = 0
         self.grenadeCook = 3
-        self.speedX = abs(pSpeedX) + self.speed
-        self.speedY = abs(pSpeedY) + self.speed
+        # P2-007: clamp grenade speed to a maximum of 8.0 to prevent out-of-bounds travel
+        self.speedX = min(abs(pSpeedX) + self.speed, 8.0)
+        self.speedY = min(abs(pSpeedY) + self.speed, 8.0)
         
     def update (self, fireSprites, dt=1.0):
         GameObject.update(self)

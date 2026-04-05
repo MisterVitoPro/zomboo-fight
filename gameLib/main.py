@@ -6,6 +6,9 @@ import pygame, random
 import dataFiles, sprites, pickups, player, zombieSpawn, UI_HUD, sGroups
 pygame.init()
 
+# P2-009: This class is a monolithic "God class" that owns the game loop, spawn logic,
+# pickup spawning, sprite management, and drawing. Future refactoring should split
+# these responsibilities into separate modules (e.g. GameLoop, SpawnManager, Renderer).
 class game:
     def __init__(self):
         self.screen = pygame.display.set_mode((dataFiles.SCREEN_WIDTH, dataFiles.SCREEN_HEIGHT))
@@ -82,9 +85,13 @@ class game:
             bigZombie = sprites.BigZombie(dataFiles.zombieBig, pos)
             sGroups.zombieSprites.add(bigZombie)
         
-    def pickups (self):   
+    def pickups (self):
+        # P2-008: Each spawn roll is independent -- multiple pickups can appear in one call.
+        # medkitSpawn drives three separate if checks (food >= 90, medkit <= 10, bazooka >= 95),
+        # so those can all trigger in the same call. mp5Spawn uses if/elif so MP5 and
+        # Flamethrower are mutually exclusive. This is intentional game-balance behavior.
         medkitSpawn = random.randrange (1, 101)
-        shotgunSpawn = random.randrange (1, 101)    
+        shotgunSpawn = random.randrange (1, 101)
         mp5Spawn = random.randrange (1, 101)
         clipSpawn = random.randrange(1, 101)
         grenadeSpawn = random.randrange(1, 101)

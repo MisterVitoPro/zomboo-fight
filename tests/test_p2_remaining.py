@@ -81,6 +81,10 @@ class TestZombieZombieCollision:
                 z.timer = 0
                 z.pause = 0
                 z.animDelay = 10
+                z.wander_offset = 0.0
+                z.wander_speed = 2.0
+                z.wander_strength = 0.0
+                z.steer_speed = 0.08
                 z.moving = False
                 z.state = None
                 z.oldx = pos[0]

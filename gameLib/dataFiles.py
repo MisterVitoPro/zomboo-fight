@@ -21,8 +21,12 @@ class _SilentSound:
 def load_sound(path):
     try:
         return _pygame.mixer.Sound(path)
-    except (FileNotFoundError, _pygame.error):
+    except (FileNotFoundError, _pygame.error) as e:
+        print(f"Warning: could not load sound '{path}': {e}")
         return _SilentSound()
+# P2-013: Forward slashes are used to concatenate sub-paths onto os.path.join-built
+# base paths. Python's open() and pygame.image.load() accept forward slashes on all
+# platforms (including Windows), so os.path.join is not required for these strings.
 dataPath = _base + "/"
 soundPath = _os.path.join(_base, "Sounds") + "/"
 pickupPath = _os.path.join(_base, "Pickups") + "/"

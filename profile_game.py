@@ -80,6 +80,9 @@ def _profiled_main_loop(self):
 
     pygame.mouse.set_visible(True)
 
+# P2-012: This monkey-patch replaces game.__init__ without restoring the original.
+# That is acceptable here because profiling is a short-lived dev-only run; no restore
+# is needed since the process exits immediately after profiling completes.
 game_main.game.__init__ = _profiled_init
 
 if __name__ == "__main__":

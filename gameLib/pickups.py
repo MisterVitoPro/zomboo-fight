@@ -13,6 +13,8 @@ class Pickup (sprites.GameObject):
 
     def __init__(self, image):
         sprites.GameObject.__init__(self, image)
+        # P2-004: store image path so _build_rotation_cache can use a stable key
+        self.image_path = image
         self.addHp = 0
         self.weapon = "none"
         self.speed = 0
@@ -21,7 +23,8 @@ class Pickup (sprites.GameObject):
         self._build_rotation_cache()
 
     def _build_rotation_cache(self):
-        cache_key = id(self.imageC)
+        # P2-004: key on image file path instead of id() which is not stable across instances
+        cache_key = self.image_path
         if cache_key not in Pickup._rotation_cache:
             frames = {}
             for angle in range(0, 362, 2):
@@ -79,6 +82,7 @@ class Medkit (Pickup):
     def on_collide (self, player):
         self.kill()
         player.hp += self.addHp
+        player.hp = min(player.hp, 150)
         
 class ShotgunPickup (Pickup):
     """Shotgun weapon pickup that arms the player with a shotgun."""
@@ -154,7 +158,7 @@ class FlameThrower (Pickup):
     def __init__(self, image):
         Pickup.__init__(self, image)
         self.gun = "Flamethrower"
-        self.clips = 0
+        self.clips = 3
         self.ammo = 100
         self.reloadSpeed = 25
         self.fireSnd = dataFiles.load_sound(dataFiles.flamethrowerSnd)

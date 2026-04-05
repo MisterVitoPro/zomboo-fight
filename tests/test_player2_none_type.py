@@ -97,6 +97,10 @@ class TestPlayer2IsNoneNotString:
                     zombie.pause = 0
                     zombie.dir = "none"
                     zombie.animDelay = 10
+                    zombie.wander_offset = 0.0
+                    zombie.wander_speed = 2.0
+                    zombie.wander_strength = 0.0
+                    zombie.steer_speed = 0.08
                     zombie.moving = False
                     zombie.state = None
                     zombie.oldx = pos[0]

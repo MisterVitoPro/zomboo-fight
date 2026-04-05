@@ -99,82 +99,79 @@ class Player (sprites.GameObject):
         self.timerPos += 1
         self.oldxy2 = self.oldxy
         
-        if sprites.jOn == True:
+        if sprites.jOn == True and self.j is not None:
             self.joyX = int(self.j.get_axis(0)*(self.dx- self.staminaLow))
             self.joyY = int(self.j.get_axis(1)*(self.dy- self.staminaLow))
             self.joyRX = float(self.j.get_axis(4))
             self.joyRY = float(self.j.get_axis(3))
             self.trigR = float(self.j.get_axis(2))
-                
-            if pygame.JOYAXISMOTION:
-                self.moving = True
-                if self.joyX < 0.1 and self.joyX > -0.1:
-                    self.joyX = 0
-                if self.joyY < 0.1 and self.joyY > -0.1:
-                    self.joyY = 0
-                self.speedX = self.joyX
-                self.speedY = self.joyY
-                
-                if self.joyRX > 0 and self.joyRX > self.joyRY:
-                    self.state = self.MOVE_E
-                elif self.joyRX < 0 and self.joyRX < self.joyRY:
-                    self.state = self.MOVE_W
-                elif self.joyRY > 0 and self.joyRY > self.joyRX:
-                    self.state = self.MOVE_S
-                elif self.joyRY < 0 and self.joyRY < self.joyRX:
-                    self.state = self.MOVE_N
-                
-                
-                if self.trigR <= -0.7:
-                    if self.fireTimer >= self.fireRate:
-                            if self.reloading == False:
-                                if self.ammo > 0:
-                                    self.fire(self.dir)
-                                    self.fireTimer = 0
-                                    if self.automatic == True:
-                                        self.fireTimer = 0
-                                elif self.ammo <= 0:
-                                    self.fireSnd.stop()
-                                    self.emptySnd.play()
-                                    self.pre_reload()
+
+            self.moving = True
+            if self.joyX < 0.1 and self.joyX > -0.1:
+                self.joyX = 0
+            if self.joyY < 0.1 and self.joyY > -0.1:
+                self.joyY = 0
+            self.speedX = self.joyX
+            self.speedY = self.joyY
+
+            if self.joyRX > 0 and self.joyRX > self.joyRY:
+                self.state = self.MOVE_E
+            elif self.joyRX < 0 and self.joyRX < self.joyRY:
+                self.state = self.MOVE_W
+            elif self.joyRY > 0 and self.joyRY > self.joyRX:
+                self.state = self.MOVE_S
+            elif self.joyRY < 0 and self.joyRY < self.joyRX:
+                self.state = self.MOVE_N
+
+            if self.trigR <= -0.7:
+                if self.fireTimer >= self.fireRate:
+                    if self.reloading == False:
+                        if self.ammo > 0:
+                            self.fire(self.dir)
+                            self.fireTimer = 0
+                            if self.automatic == True:
+                                self.fireTimer = 0
+                        elif self.ammo <= 0:
+                            self.fireSnd.stop()
+                            self.emptySnd.play()
+                            self.pre_reload()
                                     
             sprites.GameObject.animation(self)
             
-            if pygame.JOYBUTTONDOWN:
-                self.dir = (self.joyRX, self.joyRY)
-                if self.j.get_button(5):
-                    if self.grenade > 0:
-                        if self.gTimer >= self.gTime:
-                            self.throw_grenade(self.dir)
-                            self.gTimer = 0
-                elif self.j.get_button(4):
-                    if self.reloading == False:
-                        if self.trigR > -.01:
-                            if self.gun == "Pistol":
-                                if self.ammo < 9:
-                                    if self.clips > 0:
-                                        self.pre_reload()
-                            elif self.gun == "Shotgun":
-                                if self.ammo < 5:
-                                    if self.clips > 0:
-                                        self.pre_reload()
-                            elif self.gun == "MP5":
-                                if self.ammo < 32:
-                                    if self.clips > 0:
-                                        self.pre_reload()
-                            elif self.gun == "Flamethrower":
-                                if self.ammo < 100:
-                                    if self.clips > 0:
-                                        self.pre_reload()
-                            elif self.gun == "Bazooka":
-                                if self.ammo < 1:
-                                    if self.clips > 0:
-                                        self.pre_reload()      
+            self.dir = (self.joyRX, self.joyRY)
+            if self.j.get_button(5):
+                if self.grenade > 0:
+                    if self.gTimer >= self.gTime:
+                        self.throw_grenade(self.dir)
+                        self.gTimer = 0
+            elif self.j.get_button(4):
+                if self.reloading == False:
+                    if self.trigR > -.01:
+                        if self.gun == "Pistol":
+                            if self.ammo < 9:
+                                if self.clips > 0:
+                                    self.pre_reload()
+                        elif self.gun == "Shotgun":
+                            if self.ammo < 5:
+                                if self.clips > 0:
+                                    self.pre_reload()
+                        elif self.gun == "MP5":
+                            if self.ammo < 32:
+                                if self.clips > 0:
+                                    self.pre_reload()
+                        elif self.gun == "Flamethrower":
+                            if self.ammo < 100:
+                                if self.clips > 0:
+                                    self.pre_reload()
+                        elif self.gun == "Bazooka":
+                            if self.ammo < 1:
+                                if self.clips > 0:
+                                    self.pre_reload()
             
 #Stamina effects
         self.stamina_change(1)
 #Sprinting (controller only - keyboard sprint handled below)
-        if sprites.jOn == True:
+        if sprites.jOn == True and self.j is not None:
             if self.trigR > 0:
                 if self.stamina > 0:
                     self.sprintSpeed = abs(self.trigR * 2)
@@ -240,7 +237,7 @@ class Player (sprites.GameObject):
                 self.sprintSpeed = 1
                 self.animDelay = 5
 
-            self.moving = True
+            # P2-005: moving is now set by movement() based on WASD state; do not override here
             sprites.GameObject.animation(self)
 
         mouseButtons = pygame.mouse.get_pressed()
@@ -332,9 +329,8 @@ class Player (sprites.GameObject):
         collidePowerup = pygame.sprite.spritecollide(self, powerupSprites, False)
         for collider in collidePowerup:
             if sprites.jOn == True and self.j is not None:
-                if pygame.JOYBUTTONDOWN:
-                    if self.j.get_button(0):
-                        collider.on_collide(self)
+                if self.j.get_button(0):
+                    collider.on_collide(self)
             else:
                 if self.keys[pygame.K_e] == True:
                     collider.on_collide(self)
@@ -357,6 +353,8 @@ class Player (sprites.GameObject):
             self.speedX = self.dx
         else:
             self.speedX = 0
+        # P2-005: set moving flag based on whether any WASD key is pressed
+        self.moving = (self.speedX != 0 or self.speedY != 0)
             
     def image_change (self, facing):
         """Update the animation state to match a cardinal facing direction string."""
@@ -443,7 +441,7 @@ class Player (sprites.GameObject):
                 self.staminaTimerUp += 1
                 if self.staminaTimerUp >= 15:
                     self.stamina += 1
-                    if self.speedX == 0 and self.speedY == 0:
+                    if abs(self.speedX) < 0.5 and abs(self.speedY) < 0.5:
                         self.stamina += 1
                     self.staminaTimerUp = 0
     

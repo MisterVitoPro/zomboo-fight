@@ -27,6 +27,11 @@ class SpriteGroups:
 
 _instance = SpriteGroups()
 
+# NOTE: These module-level references are bound once at import time and point to the
+# sprite group objects created for the first (and only) game session. If the game were
+# ever restarted within the same process, callers holding these references would still
+# use the original group objects rather than any freshly created ones. This design
+# works correctly for a single-session run but does not support in-process restarts.
 turretSprites = _instance.turretSprites
 UISprites = _instance.UISprites
 UIBarSprites = _instance.UIBarSprites
