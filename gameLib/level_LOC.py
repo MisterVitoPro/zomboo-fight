@@ -1,8 +1,7 @@
-'''
-Created on 03.06.2011
+"""ZOMBOO - Level spawn locations and weapon placement coordinates.
 
-@author: Anthony D'Alessandro
-'''
+Created 2011 by Anthony D'Alessandro.
+"""
 import random
 
 entiremapLOC = ((random.randrange(100, 700)), random.randrange(100, 500))

@@ -1,22 +1,23 @@
-'''Created on May 24, 2011
+"""ZOMBOO - Main game loop and menu.
 
-@author: Anthony D'Alessandro
-'''
+Created 2011 by Anthony D'Alessandro.
+"""
 import pygame, random
-import dataFiles, sprites, pickups, player, zombieSpawn, UI_HUD, sGroups, Levels
+import dataFiles, sprites, pickups, player, zombieSpawn, UI_HUD, sGroups
 pygame.init()
 
 class game:
     def __init__(self):
-        self.screen = pygame.display.set_mode((800, 600))
+        self.screen = pygame.display.set_mode((dataFiles.SCREEN_WIDTH, dataFiles.SCREEN_HEIGHT))
         pygame.display.set_caption("ZOMBOO")
         self.spawnRate = random.randrange(10, 31)
         
-        self.makeSprites()
+        sGroups.empty_all()
+        self.make_sprites()
         sGroups.staticSprites.draw(self.screen)
-        self.mainLoop()
+        self.main_loop()
         
-    def mainLoop (self):
+    def main_loop (self):
         self.background = pygame.image.load(dataFiles.gamefieldBG).convert()
         timer = 0
         timerSpawn = 0
@@ -26,50 +27,58 @@ class game:
         zombieSMax = 90
         clock = pygame.time.Clock()
         keepGoing = True
+        gameOverTimer = 0
+        nextSpawnThreshold = random.randrange(10 * dataFiles.FPS, 15 * dataFiles.FPS)
+        pygame.mouse.set_visible(False)
         while keepGoing:
-            clock.tick(30)
-            pygame.mouse.set_visible(False)
+            ms = clock.tick(dataFiles.FPS)
+            dt = ms / (1000.0 / dataFiles.FPS)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     keepGoing = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         keepGoing = False
-            
+
+            if self.player1.dead:
+                gameOverTimer += 1
+                if gameOverTimer >= 9 * dataFiles.FPS:
+                    keepGoing = False
+
             timerPickup += 1
             if timerPickup >= 150:
                 self.pickups()
                 timerPickup = 0
-            
+
             timer += 1
             if timer >= self.spawnRate:
-                    self.spawnZombie(self.zombieSpawner.rect. center)
+                    self.spawn_zombie(self.zombie_spawner.rect.center)
                     timer = 0
-                    self.spawnRate = random.randrange (zombieSMin, zombieSMax)
-            
-            timerSpawn += 1        
-            if timerSpawn >= (random.randrange(10*30, 15*30)):
-                self.zombieSpawner = zombieSpawn.zombieSpawner (30)
-                sGroups.UISprites.add(self.zombieSpawner)
+                    self.spawnRate = random.randrange(zombieSMin, zombieSMax)
+
+            timerSpawn += 1
+            if timerSpawn >= nextSpawnThreshold:
+                self.zombie_spawner = zombieSpawn.ZombieSpawner(30)
+                sGroups.UISprites.add(self.zombie_spawner)
                 timerSpawn = 0
                 zombieLvl += 1
-                zombieSMin -= 6
-                zombieSMax -= 6
-                
-            self.clearGroups()
-            self.updateGroups()
-            self.drawGroups()
-            
+                zombieSMin = max(zombieSMin - 6, 5)
+                zombieSMax = max(zombieSMax - 6, 10)
+                nextSpawnThreshold = random.randrange(10 * dataFiles.FPS, 15 * dataFiles.FPS)
+
+            self.update_groups(dt)
+            self.draw_groups()
+
             pygame.display.flip()
-            
+
         pygame.mouse.set_visible(True)
 
-    def spawnZombie(self, pos):
-        zNum = random.randrange(1, 12)
+    def spawn_zombie(self, pos):
+        zNum = random.randrange(1, 13)
         if zNum <= 11:
             zombie = sprites.Zombie(dataFiles.zombie1, pos)
             sGroups.zombieSprites.add(zombie)
-        elif zNum > 13:
+        else:
             bigZombie = sprites.BigZombie(dataFiles.zombieBig, pos)
             sGroups.zombieSprites.add(bigZombie)
         
@@ -86,7 +95,7 @@ class game:
 #            sGroups.powerupSprites.add(turret)
         
         if medkitSpawn >= 90:
-            food = pickups.foodPickup(dataFiles.foodIm)
+            food = pickups.FoodPickup(dataFiles.foodIm)
             sGroups.powerupSprites.add(food)
         
         if medkitSpawn <= 10:
@@ -98,32 +107,31 @@ class game:
             sGroups.powerupSprites.add(bazooka)
             
         if grenadeSpawn <= 10:
-            grenadePick = pickups.grenadePickup(dataFiles.grenadeIm)
+            grenadePick = pickups.GrenadePickup(dataFiles.grenadeIm)
             sGroups.powerupSprites.add(grenadePick)
         
         if shotgunSpawn <= 10:
-            shotgun = pickups.shotgunPickup (dataFiles.shotgunIm)
+            shotgun = pickups.ShotgunPickup (dataFiles.shotgunIm)
             sGroups.powerupSprites.add(shotgun)
         
         if mp5Spawn <= 10:
-            mp5 = pickups.mp5Pickup (dataFiles.mp5Im)
+            mp5 = pickups.Mp5Pickup (dataFiles.mp5Im)
             sGroups.powerupSprites.add(mp5)
             
         elif mp5Spawn >= 90:
-            flamethrower = pickups.flameThrower(dataFiles.flamethrowerIm)
+            flamethrower = pickups.FlameThrower(dataFiles.flamethrowerIm)
             sGroups.powerupSprites.add(flamethrower)
         
         if clipSpawn <= 20:
             clipPickup = pickups.ClipPickup(dataFiles.clipIm)
             sGroups.powerupSprites.add(clipPickup)
      
-    def makeSprites(self):
-#        level = Levels.Level(dataFiles.buildingWallsIm)
+    def make_sprites(self):
         
         self.player1 = player.Player(dataFiles.dude1Im, 1)
         sGroups.allySprites.add(self.player1)
         
-        self.player2 = "none"
+        self.player2 = None
         
         if sprites.jCount == 2:
             self.player2 = player.Player(dataFiles.dude2Im, 2)
@@ -140,36 +148,21 @@ class game:
         UIboard = sprites.UI(self.player1)
         sGroups.textSprites.add(UIboard)
         
-        healthBar = UI_HUD.healthBar(self.player1)
-        sGroups.UIBarSprites.add(healthBar)
+        health_bar = UI_HUD.HealthBar(self.player1)
+        sGroups.UIBarSprites.add(health_bar)
         
         lasersight = sprites.LaserSight((dataFiles.laserSightIm), self.player1)
         sGroups.laserSprites.add(lasersight)
         
-        self.zombieSpawner = zombieSpawn.zombieSpawner (21)
-        sGroups.UISprites.add(self.zombieSpawner)
+        self.zombie_spawner = zombieSpawn.ZombieSpawner (21)
+        sGroups.UISprites.add(self.zombie_spawner)
     
-    def clearGroups(self):
-        sGroups.UISprites.clear(self.screen, self.background)
-        sGroups.textSprites.clear(self.screen, self.background)
-        sGroups.allySprites.clear(self.screen, self.background)
-        sGroups.zombieSprites.clear(self.screen, self.background)
-        sGroups.bulletSprites.clear(self.screen, self.background)
-        sGroups.bombSprites.clear(self.screen, self.background)
-        sGroups.fireSprites.clear(self.screen, self.background)
-        sGroups.splatSprites.clear(self.screen, self.background)
-        sGroups.laserSprites.clear(self.screen, self.background)
-        sGroups.turretSprites.clear(self.screen, self.background)
-        sGroups.UIBarSprites.clear(self.screen, self.background)
-        sGroups.powerupSprites.clear(self.screen, self.background)
-        sGroups.staticSprites.clear(self.screen, self.background)
-        
-    def updateGroups(self):
-        sGroups.allySprites.update(sGroups.zombieSprites, sGroups.powerupSprites, sGroups.bombSprites)
-        sGroups.zombieSprites.update(sGroups.bulletSprites, sGroups.fireSprites, self.player1, self.player2)
+    def update_groups(self, dt=1.0):
+        sGroups.allySprites.update(sGroups.zombieSprites, sGroups.powerupSprites, sGroups.bombSprites, dt)
+        sGroups.zombieSprites.update(sGroups.bulletSprites, sGroups.fireSprites, self.player1, self.player2, dt)
         sGroups.UISprites.update()
-        sGroups.bulletSprites.update(sGroups.splatSprites, sGroups.fireSprites)
-        sGroups.bombSprites.update(sGroups.fireSprites)
+        sGroups.bulletSprites.update(sGroups.splatSprites, sGroups.fireSprites, dt)
+        sGroups.bombSprites.update(sGroups.fireSprites, dt=dt)
         sGroups.fireSprites.update()
         sGroups.splatSprites.update()
         sGroups.laserSprites.update()
@@ -179,7 +172,7 @@ class game:
         sGroups.UIBarSprites.update()
         sGroups.textSprites.update()
         
-    def drawGroups(self):
+    def draw_groups(self):
         self.screen.blit(self.background, (0, 0))
         sGroups.powerupSprites.draw(self.screen)
         sGroups.allySprites.draw(self.screen)
@@ -197,17 +190,17 @@ class game:
         
         
 def menu():
-    screen = pygame.display.set_mode((800, 600))
+    screen = pygame.display.set_mode((dataFiles.SCREEN_WIDTH, dataFiles.SCREEN_HEIGHT))
     pygame.display.set_caption("ZOMBOO")
     
     background = pygame.image.load(dataFiles.mainMenuIm)
     screen.blit(background, (0, 0))
     
     keepGoing = 1
+    donePlaying = True
     clock = pygame.time.Clock()
     pygame.mouse.set_visible(False)
     while keepGoing == 1:
-        background = pygame.image.load(dataFiles.mainMenuIm)
         screen.blit(background, (0, 0))
         clock.tick(30)
         for event in pygame.event.get():

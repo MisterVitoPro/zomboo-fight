@@ -1,14 +1,15 @@
-'''
-Created on Jun 4, 2011
+"""ZOMBOO - Level layout parser (reads bitmap to place walls).
 
-@author: anthony
-'''
+Created 2011 by Anthony D'Alessandro.
+"""
 
 import pygame, dataFiles, sprites, sGroups
 
 BLOCK_SIZE = 4
 
 class Level:
+    """Parses a bitmap image to generate wall sprites for a level layout."""
+
     def __init__ (self, image):
         self.image = pygame.image.load(image)
         self.x = 0
@@ -35,5 +36,5 @@ class Level:
     def get_at(self, dx, dy):
         try:
             return self.image.get_at((dx, dy))
-        except:
+        except (IndexError, TypeError):
             pass

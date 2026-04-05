@@ -1,14 +1,33 @@
-'''
-Created on May 24, 2011
+"""ZOMBOO - Asset path definitions and sound loading utilities.
 
-@author: student
-'''
+Created 2011 by Anthony D'Alessandro.
+"""
 
-dataPath = "../data/"
-soundPath = "../data/Sounds/"
-pickupPath = "../data/Pickups/"
-UIPath = "../data/UI/"
-enemyPath = "../data/Enemies/"
+import os as _os
+import pygame as _pygame
+_base = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "data")
+
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+FPS = 30
+
+
+class _SilentSound:
+    def play(self): pass
+    def stop(self): pass
+    def set_volume(self, v): pass
+
+
+def load_sound(path):
+    try:
+        return _pygame.mixer.Sound(path)
+    except (FileNotFoundError, _pygame.error):
+        return _SilentSound()
+dataPath = _base + "/"
+soundPath = _os.path.join(_base, "Sounds") + "/"
+pickupPath = _os.path.join(_base, "Pickups") + "/"
+UIPath = _os.path.join(_base, "UI") + "/"
+enemyPath = _os.path.join(_base, "Enemies") + "/"
 
 """ MENU """
 bgIm = (dataPath + "concreteBackground.tga")
